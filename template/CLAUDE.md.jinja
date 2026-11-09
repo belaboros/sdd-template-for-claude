@@ -1,0 +1,56 @@
+# {{ project_name }}
+
+> Project purpose: {{ description }} _Refine this line once the first product spec is approved; see [docs/ideas/](docs/ideas/)._
+
+## Where things live
+
+| Path | What it holds |
+|------|---------------|
+| [docs/ideas/](docs/ideas/) | Original ideas, verbatim, each with a Q&A log |
+| [docs/specs/](docs/specs/) | `NNNN-slug/spec.md`, `plan.md`, `tasks.md` |
+| [docs/architecture/architecture.md](docs/architecture/architecture.md) | The **current** architecture: context, components, coupling |
+| [docs/architecture/components.json](docs/architecture/components.json) | Single source of truth for logical components and their allowed dependencies |
+| [docs/architecture/adr/](docs/architecture/adr/) | Architecture Decision Records; read them in order to see how the architecture came about |
+| [docs/architecture/metrics/](docs/architecture/metrics/) | Metric definitions, thresholds, latest results, dated snapshots |
+| [docs/sessions/](docs/sessions/) | Saved sessions: summary, the user's requests and Claude's replies (history only, never the source of truth) |
+| [docs/templates/](docs/templates/) | Templates for ideas, specs, plans, tasks and ADRs |
+| [tools/quality/](tools/quality/) | Language registry and quality-gate hooks |
+| [.pre-commit-config.yaml](.pre-commit-config.yaml), [.github/workflows/security.yml](.github/workflows/security.yml) | Security and quality checks, run locally and in CI (ADR-0008) |
+| [tools/bootstrap-github.sh](tools/bootstrap-github.sh) | Applies branch protection and GitHub security settings (ADR-0009) |
+| [tools/sessions/](tools/sessions/) | `save-session.sh`, run by the `SessionEnd` hook (ADR-0007) |
+
+## How we work: specification-driven development
+
+No code gets written until there is an approved spec for it.
+
+```
+idea  ──/idea──▶ docs/ideas/NNNN-slug.md        (original wording + Q&A log)
+      ──/spec──▶ docs/specs/NNNN-slug/spec.md   (WHAT and WHY: requirements, acceptance criteria)
+      ──/plan──▶ plan.md + tasks.md             (HOW: design; ADRs for decisions; architecture.md updated)
+      ──/implement──▶ code + tests              (test-first; quality gate passes)
+      ──/review-spec──▶ independent check + metrics snapshot
+```
+
+- `NNNN` is shared: idea `0003` becomes `docs/specs/0003-*`. ADRs have their own numbering.
+- Run each stage in a **fresh session** (`/clear`), so the files carry the context instead of the chat history.
+- Other skills: `/adr` records a decision, `/arch-metrics` computes and stores metrics, `/add-language` sets up the quality gate for a new programming language.
+
+## Rules
+
+1. **Never rewrite an original idea.** The `## Original idea` section is the user's exact words.
+2. **Log every question.** Each question you ask the user (in chat or through AskUserQuestion), the options you offered and the user's answer go into the related idea's `## Q&A log`, right after the answer arrives. Questions the user asks about an idea, and your answers, are logged there too.
+3. **The spec is the source of truth.** If you find mid-work that it is wrong, stop, ask (and log it), update the spec, then continue.
+4. **Every requirement needs a check.** Each acceptance criterion must be testable, and the plan names the test that verifies it.
+5. **Architecture docs change in the same change as the code.** Adding, removing or re-wiring a component means updating `components.json` and `architecture.md`. Any architecturally significant decision gets an ADR (`/adr`). Accepted ADRs are never edited, only superseded.
+6. **High cohesion, low coupling are enforced, not hoped for.** Code may depend only on components listed in its component's `mayDependOn`. No dependency cycles between components. Functions stay within the complexity limits in [docs/architecture/metrics/README.md](docs/architecture/metrics/README.md). Don't weaken a threshold or a boundary rule without an ADR.
+7. **New programming language ⇒ `/add-language` first.** A hook blocks writing source files in a language that is not registered in [tools/quality/languages.json](tools/quality/languages.json). Do not get around it (for example by writing the file through Bash).
+8. **{% if visibility == 'public' %}This repo is public.{% else %}Treat this repo as public: private repos get published later.{% endif %}** Never commit secrets, tokens or personal data. Never bypass the hooks (`--no-verify`). If gitleaks flags something, remove it; only allowlist a confirmed false positive in `.gitleaks.toml`, with a comment.
+9. **Keep status fields current.** Update the `Status:` lines and the index tables in [docs/ideas/README.md](docs/ideas/README.md) and [docs/architecture/adr/README.md](docs/architecture/adr/README.md).
+
+## Conventions
+
+- After cloning: `brew install gitleaks pre-commit && pre-commit install`. Run every check: `pre-commit run --all-files`.
+- GitHub protection (once, after the first push): `tools/bootstrap-github.sh`.
+- This project was generated from [sdd-template-for-claude](https://github.com/belaboros/sdd-template-for-claude). Pull template improvements with `copier update --trust` on a clean branch, and review the diff. Never edit `.copier-answers.yml` by hand.
+- Dates are absolute (`YYYY-MM-DD`). Diagrams are Mermaid in Markdown (ADR-0004).
+- Tech stack, build, test, lint and metrics commands: _added here by `/add-language` and `/plan`._

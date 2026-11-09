@@ -1,0 +1,61 @@
+name: template-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Template smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        variant:
+          - "-d license=Apache-2.0 -d visibility=public"
+          - "-d license=MIT -d visibility=private"
+          - "-d license=none"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - run: pip install copier==9.19.1 pre-commit==4.7.0
+      - name: Generate project
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          git config --global user.email ci@example.invalid
+          git config --global user.name ci
+          # shellcheck disable=SC2086  # VARIANT is a list of flags
+          copier copy --trust --defaults --vcs-ref HEAD -d project_name="Smoke Test" $VARIANT . "$RUNNER_TEMP/demo"
+      - name: Generated project passes its own hooks
+        working-directory: ${{ runner.temp }}/demo
+        env:
+          SKIP: gitleaks-system
+        run: git add -A && pre-commit run --all-files --show-diff-on-failure
+      - name: Language gate blocks unregistered languages
+        working-directory: ${{ runner.temp }}/demo
+        run: |
+          export CLAUDE_PROJECT_DIR="$PWD"
+          if echo '{"tool_input":{"file_path":"src/app.py"}}' | tools/quality/check-language-registered.sh 2>/dev/null; then
+            echo "expected the gate to block a .py file" >&2; exit 1
+          fi
+          echo '{"tool_input":{"file_path":"README.md"}}' | tools/quality/check-language-registered.sh
+      - name: No template leftovers
+        working-directory: ${{ runner.temp }}/demo
+        run: |
+          ! grep -rIl --exclude-dir=.git -e '{{' -e '{%' --exclude='*.yml' . || { echo "unrendered Jinja found" >&2; exit 1; }
+          test -f .copier-answers.yml

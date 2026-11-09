@@ -1,0 +1,60 @@
+# Copier template: spec-driven development with Claude Code.
+# New project:  copier copy --trust gh:belaboros/sdd-template-for-claude <dir>
+# Update later: copier update --trust      (run inside the project, on a clean branch)
+
+_min_copier_version: "9.4"
+_subdirectory: template
+_answers_file: .copier-answers.yml
+
+project_name:
+  type: str
+  help: Project name (shown in CLAUDE.md, architecture.md)
+  validator: "{% if not project_name.strip() %}Required{% endif %}"
+
+project_slug:
+  type: str
+  help: GitHub repository name
+  default: "{{ project_name | lower | replace(' ', '-') }}"
+  validator: "{% if not (project_slug | regex_search('^[A-Za-z0-9._-]+$')) %}Letters, digits, '.', '_' and '-' only{% endif %}"
+
+description:
+  type: str
+  help: One sentence on what the project is for (can be refined later)
+  default: "_Not yet defined._"
+
+github_owner:
+  type: str
+  help: GitHub user or organisation that owns the repository
+  default: belaboros
+
+visibility:
+  type: str
+  help: Repository visibility
+  choices: [public, private]
+  default: public
+
+license:
+  type: str
+  help: License
+  choices: [Apache-2.0, MIT, none]
+  default: Apache-2.0
+
+copyright_holder:
+  type: str
+  help: Copyright holder for the license
+  default: "{{ github_owner }}"
+  when: "{{ license != 'none' }}"
+
+_tasks:
+  - command: "git init -q -b main"
+    when: "{{ _copier_operation == 'copy' }}"
+  - command: "chmod +x tools/quality/check-language-registered.sh tools/sessions/save-session.sh tools/bootstrap-github.sh"
+  - command: "command -v pre-commit >/dev/null && pre-commit install || echo 'pre-commit not installed: brew install gitleaks pre-commit && pre-commit install'"
+
+_message_after_copy: |
+  {{ project_name }} is ready. Next:
+    cd {{ _copier_conf.dst_path }}
+    git add -A && git commit -m "Initial project from sdd-template-for-claude"
+    gh repo create {{ github_owner }}/{{ project_slug }} --{{ visibility }} --source . --push
+    tools/bootstrap-github.sh        # branch protection + GitHub security settings
+  Then open Claude Code and run: /idea <your first idea>

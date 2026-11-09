@@ -1,0 +1,26 @@
+# Secrets and credentials: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+credentials*.json
+secrets*.json
+*.secret
+
+# Claude Code personal settings (the shared .claude/settings.json is committed)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Tool output
+/gitleaks
+gitleaks.tar.gz

@@ -1,0 +1,4 @@
+{
+  "$comment": "Single source of truth for logical components. Boundary linters, the metrics collector and the diagrams in architecture.md are all derived from this file. Schema: see docs/architecture/metrics/README.md#components-file.",
+  "components": []
+}

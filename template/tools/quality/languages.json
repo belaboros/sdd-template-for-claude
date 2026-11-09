@@ -1,0 +1,4 @@
+{
+  "$comment": "Languages with a working quality gate. Written only by /add-language. Entry: {name, extensions, added, adr, lint, metrics}.",
+  "languages": []
+}

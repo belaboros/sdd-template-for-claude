@@ -1,0 +1,4 @@
+# gitleaks configuration (ADR-0008): the default ruleset, plus project-specific allowlists.
+# Only add an allowlist entry for a confirmed false positive, with a comment saying why.
+[extend]
+useDefault = true

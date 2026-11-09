@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Applies the GitHub repository settings from ADR-0009. Idempotent; run after the first push.
+# Requires: gh (authenticated with admin rights on the repo).
+set -euo pipefail
+
+repo="${1:-{{ github_owner }}/{{ project_slug }}}"
+api="repos/$repo"
+
+gh api "$api" --silent || { echo "Repository $repo not found. Push it first: gh repo create $repo --{{ visibility }} --source . --push" >&2; exit 1; }
+
+step() { printf '%-48s' "$1"; }
+
+step "Private vulnerability reporting";   gh api -X PUT "$api/private-vulnerability-reporting" --silent && echo ok
+step "Dependabot alerts";                 gh api -X PUT "$api/vulnerability-alerts" --silent && echo ok
+step "Dependabot security updates";       gh api -X PUT "$api/automated-security-fixes" --silent && echo ok
+
+step "Secret scanning + push protection"
+gh api -X PATCH "$api" --silent --input - <<'JSON' && echo "requested"
+{"security_and_analysis":{
+  "secret_scanning":{"status":"enabled"},
+  "secret_scanning_push_protection":{"status":"enabled"},
+  "secret_scanning_non_provider_patterns":{"status":"enabled"},
+  "secret_scanning_validity_checks":{"status":"enabled"}}}
+JSON
+
+step "Branch protection on main"
+gh api -X PUT "$api/branches/main/protection" --silent --input - <<'JSON' && echo ok
+{
+  "required_status_checks": {"strict": true, "contexts": ["Secret scan (full history)", "Pre-commit hooks (all files)"]},
+  "enforce_admins": true,
+  "required_pull_request_reviews": {"required_approving_review_count": 0, "dismiss_stale_reviews": true},
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": true
+}
+JSON
+
+echo
+echo "Resulting security settings (features shown as disabled need a paid GitHub plan):"
+gh api "$api" --jq '.security_and_analysis | to_entries[] | "  \(.key): \(.value.status)"'

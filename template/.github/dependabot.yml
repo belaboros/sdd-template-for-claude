@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned GitHub Actions current. Language ecosystems are added by /add-language.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7   # don't adopt a release until it has been out a week (supply-chain safety)
+    groups:
+      actions:
+        patterns: ["*"]
